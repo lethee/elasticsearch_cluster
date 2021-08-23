@@ -1,4 +1,6 @@
 # Before up this file, check "docker-compose-create-certs.yml"
+# Todo:
+# - https://www.elastic.co/guide/en/elasticsearch/reference/current/anonymous-access.html
 
 version: "2.2"
 services:
