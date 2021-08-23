@@ -1,0 +1,86 @@
+# Before up this file, check "docker-compose-create-certs.yml"
+
+version: "2.2"
+services:
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=es-cluster
+      - discovery.seed_hosts=es02
+      - cluster.initial_master_nodes=es01,es02
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=true
+      # - xpack.security.http.ssl.enabled=true 
+      # - xpack.security.http.ssl.key=$CERTS_DIR/es01/es01.key
+      # - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      # - xpack.security.http.ssl.certificate=$CERTS_DIR/es01/es01.crt
+      - xpack.security.transport.ssl.enabled=true 
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=$CERTS_DIR/es01/es01.crt
+      - xpack.security.transport.ssl.key=$CERTS_DIR/es01/es01.key
+      - ELASTIC_PASSWORD=$ELASTIC_PASSWORD
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+      - escerts:$CERTS_DIR:ro
+    ports:
+      - 9200:9200
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+    container_name: es02
+    environment:
+      - node.name=es02
+      - cluster.name=es-cluster
+      - discovery.seed_hosts=es01
+      - cluster.initial_master_nodes=es01,es02
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=true
+      # - xpack.security.http.ssl.enabled=true 
+      # - xpack.security.http.ssl.key=$CERTS_DIR/es02/es02.key
+      # - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      # - xpack.security.http.ssl.certificate=$CERTS_DIR/es02/es02.crt
+      - xpack.security.transport.ssl.enabled=true 
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=$CERTS_DIR/es02/es02.crt
+      - xpack.security.transport.ssl.key=$CERTS_DIR/es02/es02.key
+      - ELASTIC_PASSWORD=$ELASTIC_PASSWORD
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata02:/usr/share/elasticsearch/data
+      - escerts:$CERTS_DIR:ro
+  kib01:
+    image: docker.elastic.co/kibana/kibana:7.14.0
+    container_name: kib01
+    depends_on: {"es01": {"condition": "service_healthy"}}
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://es01:9200
+      ELASTICSEARCH_HOSTS: '["http://es01:9200","http://es02:9200"]'
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: $ELASTIC_PASSWORD
+
+volumes:
+  esdata01:
+    driver: local
+  esdata02:
+    driver: local
+  escerts:
+    driver: local
